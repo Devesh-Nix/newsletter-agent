@@ -8,7 +8,6 @@ version = "1.0.0"
 description = "An autonomous LangGraph agent that researches, writes, critiques and 'sends' a weekly AI-agents newsletter."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
 authors = [{ name = "Devesh", email = "devesh.nix@gmail.com" }]
 dependencies = [
     "langgraph>=1.0",

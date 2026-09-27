@@ -1,5 +1,9 @@
 # 📰 Newsletter Agent
 
+[![CI](https://github.com/Devesh-Nix/newsletter-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Devesh-Nix/newsletter-agent/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
+![LangGraph](https://img.shields.io/badge/built%20with-LangGraph-4f46e5)
+
 An autonomous AI agent, built with **LangGraph**, that turns one plain-English goal:
 
 > *"Create a weekly newsletter on latest AI agent news and send it to our subscribers."*
@@ -155,7 +159,7 @@ resumes exactly where it stopped with `Command(resume=decision)`.
 Requires Python 3.11+.
 
 ```bash
-git clone <this repo> && cd newsletter-agent
+git clone https://github.com/Devesh-Nix/newsletter-agent.git && cd newsletter-agent
 python -m venv .venv
 # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
