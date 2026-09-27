@@ -32,6 +32,7 @@ from a CLI with a live reasoning timeline, or from a Streamlit web UI.
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
 - [Usage](#usage)
+- [Deployment](#deployment)
 - [Configuration](#configuration)
 - [Project layout](#project-layout)
 - [Testing](#testing)
@@ -260,6 +261,40 @@ Subscribers come from [data/subscribers.json](data/subscribers.json).
 
 ---
 
+## Deployment
+
+The web UI runs on **Streamlit Community Cloud** (free) straight from this repository:
+
+1. Sign in at [share.streamlit.io](https://share.streamlit.io) with GitHub and choose
+   **Create app → Deploy a public app from GitHub**.
+2. Repository `Devesh-Nix/newsletter-agent`, branch `main`, main file `app.py`. Optionally
+   pick a custom subdomain.
+3. Under **Advanced settings**, choose **Python 3.12** and paste your secrets, using
+   [.streamlit/secrets.toml.example](.streamlit/secrets.toml.example) as the template:
+
+   ```toml
+   GOOGLE_API_KEY = "..."      # or ANTHROPIC_API_KEY / OPENAI_API_KEY / XAI_API_KEY
+   APP_PASSWORD = "..."        # only people you give this to can use your API key
+   ```
+
+4. Click **Deploy**. The first build takes a few minutes; later pushes to `main` redeploy
+   automatically.
+
+How the hosted app stays safe to share:
+
+- **Secrets** are read from `st.secrets` and never shown in the UI.
+- **Optional password gate.** With `APP_PASSWORD` set, visitors must enter it before they
+  can run the agent on the server's key.
+- **Visitor keys stay private.** A key a visitor types into the sidebar lives only in their
+  browser session. It is passed directly to the model client and never written to the
+  process environment, which is shared by every visitor of a hosted app.
+- **Pinned dependencies.** `requirements.txt` pins the exact versions the test suite runs
+  against, so a redeploy can't silently pick up a breaking release.
+- **Ephemeral output.** The outbox on the host is temporary, so use the download buttons
+  in the Delivery tab.
+
+---
+
 ## Configuration
 
 All settings are environment variables (or `.env` entries). The UI and CLI expose the
@@ -300,7 +335,7 @@ newsletter_agent/
 ├── templates/        # newsletter.html.j2 / .md.j2 / .txt.j2
 └── cli.py            # rich terminal interface
 app.py                # Streamlit front end
-tests/                # 53 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
+tests/                # 56 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
 ```
 
 ---
@@ -308,7 +343,8 @@ tests/                # 53 offline tests (scripted LLM, mocked HTTP, Streamlit A
 ## Testing
 
 ```bash
-pytest          # 53 tests, under 30 s, fully offline, no API keys
+pip install -r requirements-dev.txt
+pytest          # 56 tests, under 30 s, fully offline, no API keys
 ruff check .    # lint
 ```
 
