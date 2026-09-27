@@ -19,7 +19,7 @@ from rich.table import Table
 
 from newsletter_agent.agent import NewsletterAgent, NewsletterResult
 from newsletter_agent.config import DEFAULT_GOAL, load_settings
-from newsletter_agent.llm import LLMConfigurationError
+from newsletter_agent.llm import LLMConfigurationError, explain_llm_error
 from newsletter_agent.models import HumanDecision
 from newsletter_agent.nodes.curation import ResearchError
 from newsletter_agent.state import AgentEvent, AgentMode
@@ -64,6 +64,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Force the news window in days (default: inferred from the goal, 7 for weekly).",
     )
     parser.add_argument("--max-revisions", type=int, help="Self-critique revision budget.")
+    parser.add_argument(
+        "--rpm",
+        type=float,
+        help="Max model calls per minute (0 = no limit; default: 5 for Gemini, else no limit).",
+    )
     parser.add_argument("--name", help="Newsletter name.")
     parser.add_argument("--show", action="store_true", help="Print the final newsletter.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Debug logging.")
@@ -166,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
             llm_model=args.model,
             lookback_days=args.days,
             max_revisions=args.max_revisions,
+            llm_requests_per_minute=args.rpm,
             newsletter_name=args.name,
             sender_name=args.name,
         )
@@ -200,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # provider/network errors: clean message, trace on -v
         if args.verbose:
             console.print_exception()
-        console.print(f"[red]The agent stopped:[/] {type(exc).__name__}: {exc}")
+        console.print(f"[red]The agent stopped:[/] {explain_llm_error(exc)}", highlight=False)
         return 1
 
     print_summary(agent.result(thread_id), show=args.show)

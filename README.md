@@ -288,6 +288,12 @@ How the hosted app stays safe to share:
 - **Visitor keys stay private.** A key a visitor types into the sidebar lives only in their
   browser session. It is passed directly to the model client and never written to the
   process environment, which is shared by every visitor of a hosted app.
+- **Quota-aware.** Model calls are paced to the provider's requests-per-minute quota,
+  and the pacing is shared by every visitor using the server's key. When a cap is
+  active, all article summaries are written in a single call, cutting a run to about
+  9 requests. That is about 2-3 minutes on Gemini's free tier. Rate-limit, 5xx and
+  timeout errors are retried with backoff, and anything that still fails is explained
+  in plain language.
 - **Pinned dependencies.** `requirements.txt` pins the exact versions the test suite runs
   against, so a redeploy can't silently pick up a breaking release.
 - **Ephemeral output.** The outbox on the host is temporary, so use the download buttons
@@ -304,6 +310,7 @@ common ones.
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | `anthropic`, `openai`, `google_genai`, `xai`, `ollama` or `auto` |
 | `LLM_MODEL` | per provider | Model name override |
+| `LLM_REQUESTS_PER_MINUTE` | auto | Paces model calls to stay inside your quota. Auto means 5 for Gemini (the free-tier limit on Flash models) and no cap for other providers. `0` disables it. |
 | `NEWSLETTER_NAME` | `The Agentic Brief` | Masthead and sender name |
 | `LOOKBACK_DAYS` | inferred | Force the news window in days. Unset, it is inferred from the goal (weekly = 7) |
 | `MIN_ARTICLES` / `MAX_ARTICLES` | `5` / `7` | Bounds on the number of featured stories |
@@ -335,7 +342,7 @@ newsletter_agent/
 ├── templates/        # newsletter.html.j2 / .md.j2 / .txt.j2
 └── cli.py            # rich terminal interface
 app.py                # Streamlit front end
-tests/                # 56 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
+tests/                # 65 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
 ```
 
 ---
@@ -344,7 +351,7 @@ tests/                # 56 offline tests (scripted LLM, mocked HTTP, Streamlit A
 
 ```bash
 pip install -r requirements-dev.txt
-pytest          # 56 tests, under 30 s, fully offline, no API keys
+pytest          # 65 tests, under 30 s, fully offline, no API keys
 ruff check .    # lint
 ```
 

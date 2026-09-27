@@ -16,7 +16,7 @@ import streamlit as st
 from newsletter_agent import DEFAULT_GOAL, AgentMode, HumanDecision, NewsletterAgent, load_settings
 from newsletter_agent.agent import NewsletterResult
 from newsletter_agent.config import DEFAULT_MODELS, PROVIDER_KEY_ENV
-from newsletter_agent.llm import LLMConfigurationError
+from newsletter_agent.llm import LLMConfigurationError, explain_llm_error
 from newsletter_agent.state import AgentEvent
 
 st.set_page_config(page_title="Newsletter Agent", page_icon="📰", layout="wide")
@@ -137,6 +137,16 @@ def sidebar() -> dict:
                 format_func=lambda d: "Inferred from the goal" if d is None else f"Last {d} days",
             )
             max_articles = st.slider("Maximum stories", 5, 7, 7)
+            rpm = st.selectbox(
+                "Model calls per minute",
+                [None, 5, 10, 15, 30, 60, 0],
+                format_func=lambda v: (
+                    "Auto (5 for Gemini's free tier)"
+                    if v is None
+                    else ("No limit" if v == 0 else f"{v} per minute")
+                ),
+                help="Paces LLM calls to stay inside your provider's quota.",
+            )
             rounds = st.slider("Research rounds", 1, 5, 3)
             revisions = st.slider("Self-critique revisions", 0, 4, 2)
             threshold = st.slider("Quality bar (critic score)", 6.0, 10.0, 8.0, 0.5)
@@ -163,6 +173,7 @@ def sidebar() -> dict:
         "max_research_rounds": rounds,
         "max_revisions": revisions,
         "quality_threshold": threshold,
+        "llm_requests_per_minute": rpm,
     }
 
 
@@ -202,7 +213,8 @@ def stream_events(events, label: str) -> None:
                 state.events.append(event)
                 st.markdown(event_line(event))
         except Exception as exc:  # surface provider/network errors in the UI
-            state.phase, state.error = "error", f"{type(exc).__name__}: {exc}"
+            state.phase, state.error = "error", explain_llm_error(exc)
+            state.error_details = f"{type(exc).__name__}: {exc}"
             status.update(label="The agent stopped with an error", state="error")
             return
         checkpoint = state.agent.pending_review(state.thread_id)
@@ -221,11 +233,21 @@ def start_run(goal: str, config: dict) -> None:
         settings = load_settings(**config)
         state.agent = NewsletterAgent(settings=settings)
     except LLMConfigurationError as exc:
-        state.phase, state.error = "error", str(exc)
+        state.phase, state.error, state.error_details = "error", str(exc), None
         return
     state.events, state.checkpoint = [], None
     state.thread_id, events = state.agent.start(goal, mode)
-    stream_events(events, f"Working with {state.agent.model_label}…")
+    pace = settings.requests_per_minute
+    stream_events(
+        events,
+        f"Working with {state.agent.model_label}"
+        + (
+            f", paced to {pace:g} model calls per minute (a run takes a few minutes)"
+            if pace
+            else ""
+        )
+        + "…",
+    )
 
 
 def submit(action: str, feedback: str = "") -> None:
@@ -470,7 +492,10 @@ if state.events and state.phase != "idle":
             st.markdown(event_line(event))
 
 if state.phase == "error":
-    st.error(state.error, icon=":material/error:")
+    st.error(md(state.error), icon=":material/error:")
+    if details := state.get("error_details"):
+        with st.expander("Technical details"):
+            st.code(details, language="text", wrap_lines=True)
 elif state.phase == "awaiting_review":
     if state.checkpoint["checkpoint"] == "plan_review":
         plan_review(state.checkpoint)

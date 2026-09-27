@@ -7,11 +7,14 @@ import re
 from pathlib import Path
 
 import pytest
+from langchain_core.exceptions import ModelRateLimitError
 from langchain_core.tools import BaseTool
 from streamlit.testing.v1 import AppTest
 
 import newsletter_agent
+from newsletter_agent import llm as llm_module
 from newsletter_agent.agent import NewsletterAgent
+from newsletter_agent.models import NewsletterPlan
 from tests.conftest import fake_reader, fake_search_tool, make_article
 
 APP = str(Path(__file__).resolve().parent.parent / "app.py")
@@ -20,18 +23,15 @@ APP = str(Path(__file__).resolve().parent.parent / "app.py")
 @pytest.fixture
 def launch(monkeypatch, settings, make_llm):
     """Start the app with its agent wired to the scripted LLM and the given tools."""
-    # Registered first so monkeypatch restores them even if the app sets them.
-    for name in ("APP_PASSWORD", "ANTHROPIC_API_KEY", "LLM_PROVIDER"):
-        monkeypatch.delenv(name, raising=False)
     received: list[newsletter_agent.Settings] = []
 
-    def start(research_tools: list[BaseTool], secrets: dict | None = None) -> AppTest:
+    def start(research_tools: list[BaseTool], secrets: dict | None = None, llm=None) -> AppTest:
         def fake_agent(settings: newsletter_agent.Settings) -> NewsletterAgent:
             received.append(settings)
             # Keep the UI's choices but write to the test's temporary outbox.
             return NewsletterAgent(
                 settings=settings.model_copy(update=sandbox),
-                llm=make_llm(),
+                llm=llm or make_llm(),
                 research_tools=research_tools,
                 reader=fake_reader,
             )
@@ -121,6 +121,25 @@ def test_password_gate_protects_hosted_app(launch, research_tools):
     app.text_input[0].set_value("open-sesame")
     app.button[0].click().run()
     assert any(b.label == "Run agent" for b in app.button)
+
+
+def test_provider_errors_are_explained_with_details_on_demand(
+    launch, research_tools, make_llm, monkeypatch
+):
+    monkeypatch.setattr(llm_module, "RETRY_BACKOFF", {"initial": 0.01, "max": 0.02})
+
+    def quota_exceeded(_):
+        raise ModelRateLimitError("429 RESOURCE_EXHAUSTED GenerateRequestsPerMinute-FreeTier")
+
+    llm = make_llm()
+    llm.responders[NewsletterPlan] = quota_exceeded
+    app = launch(research_tools, llm=llm)
+    click(app, "Run agent")
+
+    assert "rate limit" in app.error[0].value
+    assert "RESOURCE_EXHAUSTED" not in app.error[0].value  # raw dump kept out of the banner
+    details = next(e for e in app.expander if e.label == "Technical details")
+    assert "RESOURCE_EXHAUSTED" in details.code[0].value
 
 
 def test_request_changes_requires_feedback(app):
