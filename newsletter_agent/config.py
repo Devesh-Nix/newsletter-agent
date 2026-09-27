@@ -29,6 +29,10 @@ PROVIDER_KEY_ENV: dict[str, tuple[str, ...]] = {
     "xai": ("XAI_API_KEY",),
 }
 
+#: Gemini API keys start on the free tier, which allows 5 requests/minute on Flash models.
+#: Paced to this by default; set LLM_REQUESTS_PER_MINUTE=0 on a paid key to disable.
+GEMINI_FREE_TIER_RPM = 5.0
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_GOAL = "Create a weekly newsletter on latest AI agent news and send it to our subscribers."
@@ -55,6 +59,12 @@ class Settings(BaseSettings):
     )
     llm_temperature: float | None = Field(
         default=None, description="Only sent when set; some models reject sampling params."
+    )
+    llm_requests_per_minute: float | None = Field(
+        default=None,
+        ge=0,
+        description="Cap on model calls per minute. None = auto (Gemini: its free-tier limit; "
+        "other providers: no cap). 0 = no cap.",
     )
     llm_max_tokens: int = 8000
     llm_timeout: float = 180.0
@@ -104,6 +114,13 @@ class Settings(BaseSettings):
     @property
     def resolved_model(self) -> str:
         return self.llm_model or DEFAULT_MODELS[self.resolved_provider]
+
+    @property
+    def requests_per_minute(self) -> float | None:
+        """The effective call-rate cap, or None for unlimited."""
+        if self.llm_requests_per_minute is None:
+            return GEMINI_FREE_TIER_RPM if self.resolved_provider == "google_genai" else None
+        return self.llm_requests_per_minute or None
 
 
 def load_settings(**overrides: object) -> Settings:

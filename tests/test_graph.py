@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from newsletter_agent import AgentMode, HumanDecision, NewsletterAgent, run_newsletter_agent
+from newsletter_agent.models import SummaryBatch
 from newsletter_agent.nodes.curation import ResearchError
 from tests.conftest import critique_sequence, fake_reader, fake_search_tool, search_turn
 
@@ -88,6 +89,32 @@ def test_model_that_skips_tools_falls_back_to_planned_queries(settings, make_llm
     assert len(result.selected) == 6
     assert result.candidates_found > 0
     assert any(e.kind == "warning" and "without searching" in e.message for e in events)
+
+
+def test_rate_limited_provider_summarises_all_articles_in_one_call(
+    settings, make_llm, research_tools
+):
+    llm = make_llm()
+    paced = settings.model_copy(update={"llm_requests_per_minute": 600})
+    result, events = run(paced, llm, research_tools)
+
+    assert result.sent
+    assert llm.structured_calls.count("SummaryBatch") == 1
+    assert "ArticleSummary" not in llm.structured_calls
+    assert any("in one call" in e.message for e in events)
+
+
+def test_failed_batch_summary_degrades_to_snippets(settings, make_llm, research_tools):
+    def broken(_):
+        raise ValueError("model returned garbage")
+
+    llm = make_llm()
+    llm.responders[SummaryBatch] = broken
+    paced = settings.model_copy(update={"llm_requests_per_minute": 600})
+    result, events = run(paced, llm, research_tools)
+
+    assert result.sent
+    assert any(e.kind == "warning" and "using their snippets" in e.message for e in events)
 
 
 def test_research_loop_respects_round_budget(settings, make_llm, research_tools):

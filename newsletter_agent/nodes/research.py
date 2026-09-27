@@ -15,6 +15,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.messages.tool import ToolCall
 from langgraph.runtime import Runtime
 
+from newsletter_agent.llm import with_backoff
 from newsletter_agent.models import Article
 from newsletter_agent.nodes.common import bullet_list, today
 from newsletter_agent.prompts import RESEARCH_BRIEF, RESEARCH_SYSTEM
@@ -52,7 +53,7 @@ def research(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             ),
         ]
 
-    model = ctx.llm.bind_tools(ctx.research_tools)
+    model = with_backoff(ctx.llm.bind_tools(ctx.research_tools))
     response: AIMessage = model.invoke([*history, *new_messages])
 
     if response.tool_calls:

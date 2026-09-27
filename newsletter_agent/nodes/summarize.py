@@ -8,6 +8,7 @@ from langgraph.runtime import Runtime
 
 from newsletter_agent.state import AgentContext, AgentState, emit
 from newsletter_agent.tools import summarize_articles
+from newsletter_agent.tools.summarizer import is_fallback
 from newsletter_agent.utils import domain_of
 
 
@@ -32,10 +33,25 @@ def summarize(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             url=article.url,
         )
 
-    emit(runtime, "summarize", "Summarising each article for the audience")
+    # Under a request-rate cap, one call for all articles beats one call each.
+    batched = ctx.settings.requests_per_minute is not None
+    emit(
+        runtime,
+        "summarize",
+        f"Summarising all {len(selected)} articles in one call (rate-limited provider)"
+        if batched
+        else "Summarising each article for the audience",
+    )
     summaries = summarize_articles(
-        ctx.llm, selected, contents, state["plan"], ctx.settings.newsletter_name
+        ctx.llm, selected, contents, state["plan"], ctx.settings.newsletter_name, batched=batched
     )
     for summary in summaries:
         emit(runtime, "summarize", summary.headline, kind="result")
+    if failed := sum(is_fallback(s) for s in summaries):
+        emit(
+            runtime,
+            "summarize",
+            f"{failed} article(s) could not be summarised by the model; using their snippets",
+            kind="warning",
+        )
     return {"summaries": {a.id: s for a, s in zip(selected, summaries, strict=True)}}

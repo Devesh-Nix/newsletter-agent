@@ -19,7 +19,8 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field
 
-from newsletter_agent.config import Settings
+from newsletter_agent import config
+from newsletter_agent.config import PROVIDER_KEY_ENV, Settings
 from newsletter_agent.models import (
     Article,
     ArticleContent,
@@ -28,9 +29,11 @@ from newsletter_agent.models import (
     Critique,
     CurationResult,
     DraftItem,
+    IdentifiedSummary,
     NewsletterDraft,
     NewsletterPlan,
     RankedPick,
+    SummaryBatch,
 )
 from newsletter_agent.utils import article_id, utc_now
 
@@ -127,6 +130,21 @@ def default_summary(messages: list[BaseMessage]) -> ArticleSummary:
     )
 
 
+def default_summary_batch(messages: list[BaseMessage]) -> SummaryBatch:
+    articles = re.findall(r"\[([0-9a-f]{8})\] (.+)", prompt_text(messages))
+    return SummaryBatch(
+        summaries=[
+            IdentifiedSummary(
+                article_id=article_id_,
+                headline=title,
+                summary=f"{title}. A batched summary that is long enough to read naturally.",
+                why_it_matters="It changes what builders can ship.",
+            )
+            for article_id_, title in articles
+        ]
+    )
+
+
 def default_draft(messages: list[BaseMessage]) -> NewsletterDraft:
     ids = ids_in(prompt_text(messages))
     return NewsletterDraft(
@@ -218,6 +236,26 @@ def fake_reader(article: Article) -> ArticleContent:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+ENV_VARS_UNDER_TEST = [
+    *(var for env_vars in PROVIDER_KEY_ENV.values() for var in env_vars),
+    "LLM_PROVIDER",
+    "LLM_MODEL",
+    "LLM_REQUESTS_PER_MINUTE",
+    "APP_PASSWORD",
+    "TAVILY_API_KEY",
+]
+
+
+@pytest.fixture(autouse=True)
+def isolated_environment(monkeypatch):
+    """Tests never see the developer's real API keys or .env file, so they can't make
+    real (billable) calls or behave differently on a configured machine. Anything the
+    code under test sets in os.environ is undone afterwards."""
+    for name in ENV_VARS_UNDER_TEST:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(config, "load_dotenv", lambda *args, **kwargs: False)
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+
 
 @pytest.fixture
 def settings(tmp_path) -> Settings:
@@ -260,6 +298,7 @@ def make_llm() -> Callable[..., ScriptedChatModel]:
                 NewsletterPlan: default_plan,
                 CurationResult: default_curation,
                 ArticleSummary: default_summary,
+                SummaryBatch: default_summary_batch,
                 NewsletterDraft: default_draft,
                 Critique: critic or critique_sequence(True),
             },

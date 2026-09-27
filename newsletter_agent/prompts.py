@@ -96,25 +96,40 @@ clearly demands it.
 # 4. Summarisation
 # ---------------------------------------------------------------------------
 
-SUMMARIZER_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """You summarise news articles for "{newsletter_name}", a newsletter about {topic} \
-for {audience}.
-Rules:
+_SUMMARY_RULES = """Rules:
 - Use only facts stated in the article text. Never invent numbers, names, quotes or dates.
 - summary: 2-3 sentences, 45-80 words. Lead with the news (who did what), then the key \
 detail.
 - why_it_matters: one sentence, at most 30 words, connecting the story to the audience.
 - headline: at most 12 words, specific and informative, no clickbait, no trailing period.
-- If only a short snippet is available, keep the summary brief and do not speculate.""",
+- If only a short snippet is available, keep the summary brief and do not speculate."""
+
+SUMMARIZER_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            'You summarise news articles for "{newsletter_name}", a newsletter about {topic} '
+            "for {audience}.\n" + _SUMMARY_RULES,
         ),
         (
             "human",
             "Title: {title}\nSource: {source} ({date})\nURL: {url}\n"
             'Text ({text_kind}):\n"""\n{text}\n"""',
         ),
+    ]
+)
+
+#: One call for all articles: used when model calls are rate-limited.
+BATCH_SUMMARIZER_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            'You summarise news articles for "{newsletter_name}", a newsletter about {topic} '
+            "for {audience}.\nSummarise each article below separately and return one entry "
+            "per article, tagged with the id shown in brackets. Never mix facts between "
+            "articles.\n" + _SUMMARY_RULES,
+        ),
+        ("human", "{articles}"),
     ]
 )
 

@@ -113,6 +113,16 @@ class ArticleSummary(BaseModel):
     why_it_matters: str = Field(description="One sentence on why the audience should care.")
 
 
+class IdentifiedSummary(ArticleSummary):
+    article_id: str = Field(description="The id shown in brackets before the article.")
+
+
+class SummaryBatch(BaseModel):
+    """Several article summaries from one call (used when model calls are rate-limited)."""
+
+    summaries: list[IdentifiedSummary] = Field(description="One entry per article, same order.")
+
+
 class DraftItem(BaseModel):
     article_id: str = Field(description="Id of the source article this item covers.")
     headline: str
