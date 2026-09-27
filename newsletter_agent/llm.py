@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any, TypeVar
 
+import httpx
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
@@ -30,6 +31,8 @@ def create_chat_model(settings: Settings) -> BaseChatModel:
             f"Provider '{provider}' needs an API key: set {' or '.join(key_vars)} "
             "(in your shell or a .env file), or choose another provider."
         )
+    if provider == "ollama":
+        _check_ollama(settings.ollama_base_url)
 
     kwargs: dict[str, Any] = {}
     if settings.llm_temperature is not None:
@@ -49,6 +52,18 @@ def create_chat_model(settings: Settings) -> BaseChatModel:
         return init_chat_model(model, model_provider=provider, **kwargs)
     except ImportError as exc:  # provider integration package not installed
         raise LLMConfigurationError(str(exc)) from exc
+
+
+def _check_ollama(base_url: str) -> None:
+    """Fail fast with a helpful message instead of erroring on the first LLM call."""
+    try:
+        httpx.get(f"{base_url.rstrip('/')}/api/tags", timeout=3).raise_for_status()
+    except httpx.HTTPError as exc:
+        hosted = ", ".join(var for env_vars in PROVIDER_KEY_ENV.values() for var in env_vars)
+        raise LLMConfigurationError(
+            f"No LLM available. Set an API key ({hosted}) in your shell or a .env file, "
+            f"or start a local Ollama server at {base_url}."
+        ) from exc
 
 
 def structured_output(llm: BaseChatModel, schema: type[SchemaT]) -> Runnable[Any, SchemaT]:

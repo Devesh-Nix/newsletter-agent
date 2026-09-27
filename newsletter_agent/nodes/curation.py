@@ -49,8 +49,8 @@ def curate(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
     emit(
         runtime,
         "curate",
-        f"Ranking {len(pool)} unique candidates (from {len(candidates)} raw results) "
-        f"to pick the top {target}",
+        f"Ranking {len(pool)} recent, de-duplicated candidates (from {len(candidates)} "
+        f"collected) to pick the top {target}",
     )
 
     curator = CURATOR_PROMPT | structured_output(ctx.llm, CurationResult)

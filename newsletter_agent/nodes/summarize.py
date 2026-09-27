@@ -8,6 +8,7 @@ from langgraph.runtime import Runtime
 
 from newsletter_agent.state import AgentContext, AgentState, emit
 from newsletter_agent.tools import summarize_articles
+from newsletter_agent.utils import domain_of
 
 
 def summarize(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
@@ -23,7 +24,13 @@ def summarize(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             if content.from_full_page
             else "page unreadable, using the search snippet"
         )
-        emit(runtime, "summarize", f"read_article({article.url}) → {detail}", kind="tool")
+        emit(
+            runtime,
+            "summarize",
+            f"read_article({domain_of(article.url)}) → {detail}",
+            kind="tool",
+            url=article.url,
+        )
 
     emit(runtime, "summarize", "Summarising each article for the audience")
     summaries = summarize_articles(
