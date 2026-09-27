@@ -2,36 +2,46 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
+from langchain_core.tools import BaseTool
 from streamlit.testing.v1 import AppTest
 
 import newsletter_agent
 from newsletter_agent.agent import NewsletterAgent
-from tests.conftest import fake_reader
+from tests.conftest import fake_reader, fake_search_tool, make_article
 
 APP = str(Path(__file__).resolve().parent.parent / "app.py")
 
 
 @pytest.fixture
-def app(monkeypatch, settings, make_llm, research_tools) -> AppTest:
-    """The app with its agent wired to the scripted LLM and fake tools."""
+def launch(monkeypatch, settings, make_llm):
+    """Start the app with its agent wired to the scripted LLM and the given tools."""
 
-    def fake_agent(settings: newsletter_agent.Settings) -> NewsletterAgent:
-        # Keep the UI's choices but write to the test's temporary outbox.
-        return NewsletterAgent(
-            settings=settings.model_copy(update=sandbox),
-            llm=make_llm(),
-            research_tools=research_tools,
-            reader=fake_reader,
-        )
+    def start(research_tools: list[BaseTool]) -> AppTest:
+        def fake_agent(settings: newsletter_agent.Settings) -> NewsletterAgent:
+            # Keep the UI's choices but write to the test's temporary outbox.
+            return NewsletterAgent(
+                settings=settings.model_copy(update=sandbox),
+                llm=make_llm(),
+                research_tools=research_tools,
+                reader=fake_reader,
+            )
+
+        monkeypatch.setattr(newsletter_agent, "NewsletterAgent", fake_agent)
+        at = AppTest.from_file(APP, default_timeout=60)
+        at.run()
+        return at
 
     sandbox = {"outbox_dir": settings.outbox_dir, "subscribers_file": settings.subscribers_file}
-    monkeypatch.setattr(newsletter_agent, "NewsletterAgent", fake_agent)
-    at = AppTest.from_file(APP, default_timeout=60)
-    at.run()
-    return at
+    return start
+
+
+@pytest.fixture
+def app(launch, research_tools) -> AppTest:
+    return launch(research_tools)
 
 
 def click(at: AppTest, label: str) -> None:
@@ -52,6 +62,16 @@ def test_autonomous_run_shows_results(app):
     metrics = {m.label: m.value for m in app.metric}
     assert metrics["Stories selected"] == "6"
     assert metrics["Drafts written"] == "1"
+
+
+def test_dollar_amounts_are_not_rendered_as_latex(launch):
+    stories = [make_article(f"Startup {n} raises ${n}0M for agents") for n in range(1, 8)]
+    app = launch([fake_search_tool("search_news", stories)])
+    click(app, "Run agent")
+
+    lines = [m.value for m in app.markdown if "raises" in m.value]
+    assert lines
+    assert all(re.search(r"(?<!\\)\$", line) is None for line in lines)
 
 
 def test_human_in_the_loop_run_pauses_for_both_reviews(app):

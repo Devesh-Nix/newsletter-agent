@@ -5,12 +5,12 @@ streamlit run app.py
 
 from __future__ import annotations
 
+import base64
 import os
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from newsletter_agent import DEFAULT_GOAL, AgentMode, HumanDecision, NewsletterAgent, load_settings
 from newsletter_agent.agent import NewsletterResult
@@ -131,9 +131,26 @@ def sidebar() -> dict:
 # ---------------------------------------------------------------------------
 
 
+def md(text: str) -> str:
+    """Escape text for Streamlit Markdown, where a pair of ``$`` signs starts LaTeX math
+    (think "raises $80M ... $20M")."""
+    return text.replace("$", r"\$")
+
+
+def email_preview(html: str, height: int) -> None:
+    """Show the email in an isolated iframe. A data: URL gets an opaque origin, so the
+    preview can never reach into the app (defence in depth on top of autoescaping)."""
+    encoded = base64.b64encode(html.encode("utf-8")).decode("ascii")
+    st.iframe(f"data:text/html;charset=utf-8;base64,{encoded}", height=height)
+
+
+def badges(labels: list[str], color: str = "blue") -> str:
+    return " ".join(f":{color}-badge[{md(label).replace(']', '')}]" for label in labels)
+
+
 def event_line(event: AgentEvent) -> str:
     color = STAGE_COLOR.get(event.stage, "gray")
-    text = f"*{event.message}*" if event.kind == "thought" else event.message
+    text = f"*{md(event.message)}*" if event.kind == "thought" else md(event.message)
     return f":{color}-badge[{event.stage}] {KIND_ICON.get(event.kind, '')} {text}"
 
 
@@ -185,16 +202,16 @@ def plan_review(checkpoint: dict) -> None:
     with st.container(border=True):
         st.subheader(":material/person_check: Review the research plan")
         left, right = st.columns(2)
-        left.markdown(f"**Topic:** {plan['topic']}  \n**Audience:** {plan['audience']}")
+        left.markdown(f"**Topic:** {md(plan['topic'])}  \n**Audience:** {md(plan['audience'])}")
         left.markdown(
-            f"**Tone:** {plan['tone']}  \n**Window:** last {plan['time_window_days']} days  \n"
+            f"**Tone:** {md(plan['tone'])}  \n**Window:** last {plan['time_window_days']} days  \n"
             f"**Stories:** {plan['target_article_count']}"
         )
         right.markdown("**Search queries**")
-        right.markdown(" ".join(f":blue-badge[{q}]" for q in plan["search_queries"]))
+        right.markdown(badges(plan["search_queries"]))
         right.markdown("**Selection criteria**")
-        right.markdown("\n".join(f"- {c}" for c in plan["selection_criteria"]))
-        st.caption(plan["reasoning"])
+        right.markdown("\n".join(f"- {md(c)}" for c in plan["selection_criteria"]))
+        st.caption(md(plan["reasoning"]))
         review_controls("plan", approve_label="Approve plan")
 
 
@@ -202,7 +219,8 @@ def draft_review(checkpoint: dict) -> None:
     with st.container(border=True):
         st.subheader(":material/person_check: Approve the newsletter before it is sent")
         st.markdown(
-            f"**Subject:** {checkpoint['subject']}  \n**Preheader:** {checkpoint['preheader']}"
+            f"**Subject:** {md(checkpoint['subject'])}  \n"
+            f"**Preheader:** {md(checkpoint['preheader'])}"
         )
         if review := checkpoint.get("review"):
             verdict = "approved" if review["passed"] else "flagged issues"
@@ -212,7 +230,7 @@ def draft_review(checkpoint: dict) -> None:
             )
         preview, markdown = st.tabs(["Preview", "Markdown"])
         with preview:
-            components.html(checkpoint["html"], height=720, scrolling=True)
+            email_preview(checkpoint["html"], height=720)
         with markdown:
             st.code(checkpoint["markdown"], language="markdown")
         review_controls("draft", approve_label="Approve & send")
@@ -249,7 +267,7 @@ def results(result: NewsletterResult) -> None:
 
     delivery = result.delivery
     st.success(
-        f"**Sent** “{delivery.subject}” to {len(delivery.recipients)} subscribers "
+        f"**Sent** “{md(delivery.subject)}” to {len(delivery.recipients)} subscribers "
         "(simulated: saved to the outbox).",
         icon=":material/mark_email_read:",
     )
@@ -278,9 +296,10 @@ def results(result: NewsletterResult) -> None:
     )
     with tabs[0]:
         st.markdown(
-            f"**Subject:** {result.rendered.subject}  \n**Preheader:** {result.rendered.preheader}"
+            f"**Subject:** {md(result.rendered.subject)}  \n"
+            f"**Preheader:** {md(result.rendered.preheader)}"
         )
-        components.html(result.rendered.html, height=900, scrolling=True)
+        email_preview(result.rendered.html, height=900)
     with tabs[1]:
         critique_history(result)
     with tabs[2]:
@@ -316,20 +335,20 @@ def critique_history(result: NewsletterResult) -> None:
             left, right = st.columns(2)
             with left:
                 st.markdown("**Strengths**")
-                st.markdown("\n".join(f"- {s}" for s in critique.strengths) or "—")
+                st.markdown("\n".join(f"- {md(s)}" for s in critique.strengths) or "—")
             with right:
                 st.markdown("**Issues**")
                 issues = [*review.automated_issues, *critique.issues]
-                st.markdown("\n".join(f"- {i}" for i in issues) or "None")
+                st.markdown("\n".join(f"- {md(i)}" for i in issues) or "None")
             if critique.revision_instructions and not review.passed:
                 st.markdown("**Revision instructions sent to the writer**")
-                st.markdown("\n".join(f"1. {i}" for i in critique.revision_instructions))
+                st.markdown("\n".join(f"1. {md(i)}" for i in critique.revision_instructions))
 
 
 def research_view(result: NewsletterResult) -> None:
     plan = result.plan
-    st.markdown(f"**Plan:** {plan.reasoning}")
-    st.markdown(" ".join(f":blue-badge[{q}]" for q in plan.search_queries))
+    st.markdown(f"**Plan:** {md(plan.reasoning)}")
+    st.markdown(badges(plan.search_queries))
     categories = {item.article_id: item.category for item in result.draft.items}
     st.dataframe(
         pd.DataFrame(

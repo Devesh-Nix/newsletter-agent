@@ -296,7 +296,7 @@ newsletter_agent/
 ├── templates/        # newsletter.html.j2 / .md.j2 / .txt.j2
 └── cli.py            # rich terminal interface
 app.py                # Streamlit front end
-tests/                # 46 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
+tests/                # 47 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
 ```
 
 ---
@@ -304,7 +304,7 @@ tests/                # 46 offline tests (scripted LLM, mocked HTTP, Streamlit A
 ## Testing
 
 ```bash
-pytest          # 46 tests, under 20 s, fully offline, no API keys
+pytest          # 47 tests, under 20 s, fully offline, no API keys
 ruff check .    # lint
 ```
 

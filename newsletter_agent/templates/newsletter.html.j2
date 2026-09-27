@@ -49,7 +49,7 @@
         <tr>
           <td style="padding:26px 36px 24px;{% if not loop.first %}border-top:1px solid #e5e7eb;{% endif %}">
             <p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1;"><span style="display:inline-block;padding:5px 10px;border-radius:999px;background-color:#eef2ff;color:#4338ca;font-weight:700;letter-spacing:1px;text-transform:uppercase;">{{ item.category }}</span></p>
-            <h2 style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.3;font-weight:700;"><a href="{{ item.url }}" style="color:#111827;text-decoration:none;">{{ item.headline }}</a></h2>
+            <h2 style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.3;font-weight:700;"><a target="_blank" rel="noopener" href="{{ item.url }}" style="color:#111827;text-decoration:none;">{{ item.headline }}</a></h2>
             <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;color:#6b7280;">{{ item.source }} &middot; {{ item.date_label }}</p>
             <p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#374151;">{{ item.summary }}</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -59,7 +59,7 @@
                 </td>
               </tr>
             </table>
-            <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;"><a href="{{ item.url }}" style="color:#4f46e5;font-weight:700;text-decoration:none;">Read the full story &rarr;</a></p>
+            <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;"><a target="_blank" rel="noopener" href="{{ item.url }}" style="color:#4f46e5;font-weight:700;text-decoration:none;">Read the full story &rarr;</a></p>
           </td>
         </tr>
         {% endfor %}
@@ -89,7 +89,7 @@
         <!-- Footer -->
         <tr>
           <td style="background-color:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 36px;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6b7280;">You're receiving this because you subscribed to {{ newsletter_name }}. <a href="{{ unsubscribe_url }}" style="color:#6b7280;">Unsubscribe</a>.<br>This issue was researched, written and self-reviewed by an autonomous AI agent. Every story links to its original source.</p>
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6b7280;">You're receiving this because you subscribed to {{ newsletter_name }}. <a target="_blank" rel="noopener" href="{{ unsubscribe_url }}" style="color:#6b7280;">Unsubscribe</a>.<br>This issue was researched, written and self-reviewed by an autonomous AI agent. Every story links to its original source.</p>
           </td>
         </tr>
 
