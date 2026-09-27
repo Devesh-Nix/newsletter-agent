@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from langchain_anthropic import ChatAnthropic
 
@@ -53,6 +55,12 @@ def test_creates_claude_model_with_configured_limits(no_keys):
     assert isinstance(llm, ChatAnthropic)
     assert llm.model == "claude-opus-5"
     assert llm.max_tokens == 1234
+
+
+def test_explicit_api_key_is_used_without_touching_the_environment(no_keys):
+    llm = create_chat_model(Settings(llm_provider="anthropic", llm_api_key="sk-ant-session"))
+    assert llm.anthropic_api_key.get_secret_value() == "sk-ant-session"
+    assert "ANTHROPIC_API_KEY" not in os.environ
 
 
 def test_claude_uses_native_json_schema_structured_output(no_keys, monkeypatch):

@@ -24,9 +24,12 @@ def create_chat_model(settings: Settings) -> BaseChatModel:
     """Instantiate the configured chat model with sensible production defaults."""
     provider = settings.resolved_provider
     model = settings.resolved_model
+    # An explicit key (e.g. typed into the web UI) is passed straight to the client and
+    # never written to os.environ, which a hosted app shares between all its visitors.
+    api_key = settings.llm_api_key.get_secret_value() if settings.llm_api_key else None
 
     key_vars = PROVIDER_KEY_ENV.get(provider, ())
-    if key_vars and not any(os.getenv(var) for var in key_vars):
+    if key_vars and not api_key and not any(os.getenv(var) for var in key_vars):
         raise LLMConfigurationError(
             f"Provider '{provider}' needs an API key: set {' or '.join(key_vars)} "
             "(in your shell or a .env file), or choose another provider."
@@ -45,7 +48,9 @@ def create_chat_model(settings: Settings) -> BaseChatModel:
             "timeout": settings.llm_timeout,
             "max_retries": 3,
         }
-    if provider == "google_genai" and not os.getenv("GOOGLE_API_KEY"):
+    if api_key and provider != "ollama":
+        kwargs["api_key"] = api_key
+    elif provider == "google_genai" and not os.getenv("GOOGLE_API_KEY"):
         kwargs["google_api_key"] = os.getenv("GEMINI_API_KEY")
 
     try:

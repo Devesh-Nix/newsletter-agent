@@ -6,6 +6,7 @@ streamlit run app.py
 from __future__ import annotations
 
 import base64
+import hmac
 import os
 from pathlib import Path
 
@@ -57,6 +58,41 @@ state.setdefault("events", [])
 
 
 # ---------------------------------------------------------------------------
+# Hosting: secrets and access control
+# ---------------------------------------------------------------------------
+
+
+def load_secrets_into_env() -> None:
+    """On Streamlit Community Cloud, server configuration (provider keys, LLM_PROVIDER,
+    APP_PASSWORD, ...) lives in st.secrets. Copy it into the environment, where the
+    agent's settings loader looks. Locally there is no secrets file and this is a no-op."""
+    try:
+        secrets = {name: st.secrets[name] for name in st.secrets}
+    except Exception:  # no secrets.toml
+        return
+    for name, value in secrets.items():
+        if name.isupper() and isinstance(value, str | int | float):
+            os.environ.setdefault(name, str(value))
+
+
+def require_password() -> None:
+    """Optional gate for public deployments: with APP_PASSWORD set, only people you give
+    the password to can run the agent on the server's API key."""
+    expected = os.getenv("APP_PASSWORD")
+    if not expected or state.get("unlocked"):
+        return
+    st.title("📰 Newsletter Agent")
+    with st.form("unlock"):
+        attempt = st.text_input("Access password", type="password")
+        if st.form_submit_button("Unlock", type="primary"):
+            if hmac.compare_digest(attempt.encode(), expected.encode()):
+                state.unlocked = True
+                st.rerun()
+            st.error("Incorrect password.")
+    st.stop()
+
+
+# ---------------------------------------------------------------------------
 # Sidebar: configuration
 # ---------------------------------------------------------------------------
 
@@ -80,15 +116,18 @@ def sidebar() -> dict:
         placeholder = DEFAULT_MODELS.get(provider, "provider default")
         model = st.text_input("Model", placeholder=placeholder) or None
         key_vars = PROVIDER_KEY_ENV.get(provider, ())
+        api_key = None
         if key_vars:
-            key = st.text_input(
-                f"{key_vars[0]}",
-                type="password",
-                placeholder="Using environment / .env" if os.getenv(key_vars[0]) else "",
-                help="Used for this session only; never stored.",
+            api_key = (
+                st.text_input(
+                    f"{key_vars[0]}",
+                    type="password",
+                    placeholder="Using the server's key" if os.getenv(key_vars[0]) else "",
+                    help="Kept in your browser session only: never stored, logged or shared "
+                    "with other visitors.",
+                )
+                or None
             )
-            if key:
-                os.environ[key_vars[0]] = key
 
         with st.expander("Agent behaviour"):
             name = st.text_input("Newsletter name", value="The Agentic Brief")
@@ -116,6 +155,7 @@ def sidebar() -> dict:
         "mode": mode,
         "llm_provider": provider,
         "llm_model": model,
+        "llm_api_key": api_key,
         "newsletter_name": name,
         "sender_name": name,
         "lookback_days": days,
@@ -404,6 +444,9 @@ def delivery_view(result: NewsletterResult) -> None:
 # ---------------------------------------------------------------------------
 # Page
 # ---------------------------------------------------------------------------
+
+load_secrets_into_env()
+require_password()
 
 config = sidebar()
 st.title("📰 Newsletter Agent")

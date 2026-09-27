@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Provider = Literal["anthropic", "openai", "google_genai", "xai", "ollama"]
@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # --- LLM -----------------------------------------------------------------
     llm_provider: Provider | Literal["auto"] = "auto"
     llm_model: str | None = None
+    llm_api_key: SecretStr | None = Field(
+        default=None, description="Explicit key for the selected provider (overrides env)."
+    )
     llm_temperature: float | None = Field(
         default=None, description="Only sent when set; some models reject sampling params."
     )
