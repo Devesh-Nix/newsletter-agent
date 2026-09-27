@@ -13,6 +13,7 @@ Two kinds of models live here:
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -146,3 +147,24 @@ class Critique(BaseModel):
         description="Actionable edits the writer should make. Empty if publish-ready."
     )
     approved: bool = Field(description="True only if the draft is ready to send as-is.")
+
+
+# ---------------------------------------------------------------------------
+# Review bookkeeping
+# ---------------------------------------------------------------------------
+
+
+class ReviewRecord(BaseModel):
+    """One pass of the self-reflection loop: LLM critique plus automated checks."""
+
+    draft_number: int
+    critique: Critique
+    automated_issues: list[str]
+    passed: bool
+
+
+class HumanDecision(BaseModel):
+    """A reviewer's answer at a human-in-the-loop checkpoint."""
+
+    action: Literal["approve", "revise", "reject"]
+    feedback: str = ""
