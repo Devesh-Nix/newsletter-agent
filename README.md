@@ -296,7 +296,7 @@ newsletter_agent/
 ├── templates/        # newsletter.html.j2 / .md.j2 / .txt.j2
 └── cli.py            # rich terminal interface
 app.py                # Streamlit front end
-tests/                # 47 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
+tests/                # 53 offline tests (scripted LLM, mocked HTTP, Streamlit AppTest)
 ```
 
 ---
@@ -304,7 +304,7 @@ tests/                # 47 offline tests (scripted LLM, mocked HTTP, Streamlit A
 ## Testing
 
 ```bash
-pytest          # 47 tests, under 20 s, fully offline, no API keys
+pytest          # 53 tests, under 30 s, fully offline, no API keys
 ruff check .    # lint
 ```
 
@@ -317,7 +317,7 @@ genuine tool-calling turns and structured outputs, plus fake search tools. It co
 - every human-in-the-loop path: approve, amend plan, amend draft, reject, custom reviewer
 - search parsers and fallbacks (mocked HTTP), renderer escaping, MIME output
 - node decision logic: pick validation, dedupe, reconciliation, editorial checks
-- the Streamlit UI in both modes (`streamlit.testing.AppTest`)
+- the Streamlit UI in both modes (`streamlit.testing.AppTest`) and the CLI's prompts and exit codes
 
 CI runs lint and tests on Python 3.11-3.13 ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 

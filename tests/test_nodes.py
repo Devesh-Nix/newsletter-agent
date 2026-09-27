@@ -1,6 +1,8 @@
 """Pure decision logic inside the nodes: plan normalisation, pick validation,
 shortlisting, draft reconciliation and the automated editorial checks."""
 
+import pytest
+
 from newsletter_agent.config import Settings
 from newsletter_agent.models import (
     ArticleSummary,
@@ -13,6 +15,7 @@ from newsletter_agent.nodes.critique import automated_checks
 from newsletter_agent.nodes.curation import shortlist, validate_picks
 from newsletter_agent.nodes.planning import normalize_plan
 from newsletter_agent.nodes.writing import reconcile_items
+from newsletter_agent.state import AgentMode
 from tests.conftest import STORY_TOPICS, make_article
 
 SUMMARY = "A factual summary of the development that is long enough to pass the checks easily."
@@ -43,6 +46,14 @@ def draft(items, **overrides) -> NewsletterDraft:
         "sign_off": "Bye.",
     }
     return NewsletterDraft(**(fields | overrides))
+
+
+def test_agent_mode_accepts_friendly_spellings():
+    for spelling in ["hitl", "Human-in-the-loop", "human_in_the_loop", "human"]:
+        assert AgentMode(spelling) is AgentMode.HUMAN_IN_THE_LOOP
+    assert AgentMode("auto") is AgentMode.AUTONOMOUS
+    with pytest.raises(ValueError):
+        AgentMode("sometimes")
 
 
 def test_normalize_plan_clamps_and_cleans():

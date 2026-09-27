@@ -37,6 +37,17 @@ class AgentMode(StrEnum):
     AUTONOMOUS = "autonomous"
     HUMAN_IN_THE_LOOP = "human_in_the_loop"
 
+    @classmethod
+    def _missing_(cls, value: object) -> AgentMode | None:
+        """Accept friendly spellings such as "hitl", "Human-in-the-loop" or "auto"."""
+        key = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+        aliases = {
+            "hitl": cls.HUMAN_IN_THE_LOOP,
+            "human": cls.HUMAN_IN_THE_LOOP,
+            "auto": cls.AUTONOMOUS,
+        }
+        return aliases.get(key) or next((m for m in cls if m.value == key), None)
+
 
 def merge_articles(left: dict[str, Article], right: dict[str, Article]) -> dict[str, Article]:
     """Reducer: accumulate research results across rounds, keeping the first copy seen."""

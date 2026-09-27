@@ -158,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO if args.verbose else logging.WARNING,
         format="%(levelname)s %(name)s: %(message)s",
     )
-    mode = AgentMode.HUMAN_IN_THE_LOOP if args.mode == "hitl" else AgentMode.AUTONOMOUS
+    mode = AgentMode(args.mode)
 
     try:
         settings = load_settings(
@@ -197,6 +197,11 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted.[/]")
         return 130
+    except Exception as exc:  # provider/network errors: clean message, trace on -v
+        if args.verbose:
+            console.print_exception()
+        console.print(f"[red]The agent stopped:[/] {type(exc).__name__}: {exc}")
+        return 1
 
     print_summary(agent.result(thread_id), show=args.show)
     return 0
