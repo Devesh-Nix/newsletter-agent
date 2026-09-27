@@ -24,6 +24,7 @@ def curate(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
     ctx = runtime.context
     plan = state["plan"]
     candidates = list(state.get("candidates", {}).values())
+    update: dict = {}
 
     if not candidates:
         emit(
@@ -33,6 +34,7 @@ def curate(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             kind="warning",
         )
         candidates = _direct_search(plan, runtime)
+        update["candidates"] = {a.id: a for a in candidates}
 
     pool = [
         a
@@ -79,7 +81,7 @@ def curate(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             f"[{pick.category}] {article.title} ({article.source}) — {pick.rationale}",
             kind="result",
         )
-    return {"selected": selected, "picks": picks}
+    return {**update, "selected": selected, "picks": picks}
 
 
 def shortlist(pool: list[Article], limit: int) -> list[Article]:

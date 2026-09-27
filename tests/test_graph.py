@@ -86,6 +86,7 @@ def test_model_that_skips_tools_falls_back_to_planned_queries(settings, make_llm
 
     assert result.sent
     assert len(result.selected) == 6
+    assert result.candidates_found > 0
     assert any(e.kind == "warning" and "without searching" in e.message for e in events)
 
 
