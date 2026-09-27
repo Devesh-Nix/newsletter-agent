@@ -1,0 +1,35 @@
+# {{ newsletter_name }}
+
+*Weekly · {{ period_label }}*
+
+{{ intro }}
+
+**In this issue**
+
+{% for item in items %}
+{{ loop.index }}. {{ item.headline }}
+{% endfor %}
+
+{% for item in items %}
+---
+
+## {{ loop.index }}. [{{ item.headline | md_link_text }}]({{ item.url }})
+
+`{{ item.category }}` · *{{ item.source }} · {{ item.date_label }}*
+
+{{ item.summary }}
+
+**Why it matters:** {{ item.why_it_matters }}
+
+{% endfor %}
+---
+
+## The big picture
+
+{{ big_picture }}
+
+{{ sign_off }}
+
+*— The team at {{ newsletter_name }}*
+
+<sub>You're receiving this because you subscribed to {{ newsletter_name }}. [Unsubscribe]({{ unsubscribe_url }}). Researched, written and self-reviewed by an autonomous AI agent.</sub>
