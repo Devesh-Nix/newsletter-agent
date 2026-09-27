@@ -63,6 +63,21 @@ def test_normalize_plan_clamps_and_cleans():
     assert len(result.search_queries) == 6
 
 
+def test_configured_window_overrides_the_inferred_one():
+    plan = NewsletterPlan(
+        topic="AI agents",
+        audience="builders",
+        tone="crisp",
+        time_window_days=7,
+        target_article_count=6,
+        search_queries=["AI agents"],
+        selection_criteria=["impact"],
+        reasoning="r",
+    )
+    assert normalize_plan(plan, Settings()).time_window_days == 7
+    assert normalize_plan(plan, Settings(lookback_days=14)).time_window_days == 14
+
+
 def test_validate_picks_drops_bad_ids_and_duplicates_then_tops_up():
     pool = [make_article(t) for t in STORY_TOPICS[:6]]
     rewrite = make_article(STORY_TOPICS[0] + " today")  # same story, different URL

@@ -92,7 +92,11 @@ def sidebar() -> dict:
 
         with st.expander("Agent behaviour"):
             name = st.text_input("Newsletter name", value="The Agentic Brief")
-            days = st.slider("Look-back window (days)", 1, 30, 7)
+            days = st.selectbox(
+                "News window",
+                [None, 1, 3, 7, 14, 30],
+                format_func=lambda d: "Inferred from the goal" if d is None else f"Last {d} days",
+            )
             max_articles = st.slider("Maximum stories", 5, 7, 7)
             rounds = st.slider("Research rounds", 1, 5, 3)
             revisions = st.slider("Self-critique revisions", 0, 4, 2)

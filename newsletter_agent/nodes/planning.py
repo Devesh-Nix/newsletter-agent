@@ -35,6 +35,12 @@ def plan(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             "goal": state["goal"],
             "min_articles": settings.min_articles,
             "max_articles": settings.max_articles,
+            "window_rule": (
+                f"The issue must cover the last {settings.lookback_days} days."
+                if settings.lookback_days
+                else "Derive the time window from the cadence: weekly means the last 7 days, "
+                "daily 1, monthly 30. Default to 7 days."
+            ),
             "feedback": feedback,
         }
     )
@@ -68,7 +74,9 @@ def normalize_plan(plan: NewsletterPlan, settings: Settings) -> NewsletterPlan:
             "target_article_count": max(
                 settings.min_articles, min(plan.target_article_count, settings.max_articles)
             ),
-            "time_window_days": max(1, min(plan.time_window_days or settings.lookback_days, 31)),
+            # An explicitly configured window wins over the one inferred from the goal.
+            "time_window_days": settings.lookback_days
+            or max(1, min(plan.time_window_days or settings.default_window_days, 31)),
         }
     )
 

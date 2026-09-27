@@ -65,7 +65,9 @@ class Settings(BaseSettings):
     outbox_dir: Path = PROJECT_ROOT / "outbox"
 
     # --- Agent behaviour -----------------------------------------------------
-    lookback_days: int = Field(default=7, ge=1, le=31)
+    lookback_days: int | None = Field(
+        default=None, ge=1, le=31, description="Force the news window; None = infer from goal."
+    )
     min_articles: int = Field(default=5, ge=1, le=10)
     max_articles: int = Field(default=7, ge=1, le=10)
     max_research_rounds: int = Field(default=3, ge=1, le=6)
@@ -87,6 +89,10 @@ class Settings(BaseSettings):
         if self.min_articles > self.max_articles:
             raise ValueError("min_articles must be <= max_articles")
         return self
+
+    @property
+    def default_window_days(self) -> int:
+        return self.lookback_days or 7
 
     @property
     def resolved_provider(self) -> Provider:

@@ -18,8 +18,7 @@ PLANNER_PROMPT = ChatPromptTemplate.from_messages(
 Turn the user's goal into a concrete editorial and research plan.
 
 Guidelines:
-- Infer the topic, audience, tone and cadence from the goal. A weekly newsletter covers \
-the last 7 days.
+- Infer the topic, audience, tone and cadence from the goal. {window_rule}
 - Feature between {min_articles} and {max_articles} stories.
 - Write 4-6 short keyword search queries (2-5 words each) that together cover distinct \
 angles of the topic, for example: product launches, open-source frameworks and developer \

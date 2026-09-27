@@ -58,7 +58,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--provider", choices=["anthropic", "openai", "google_genai", "xai", "ollama"]
     )
     parser.add_argument("--model", help="Model name override, e.g. claude-opus-5.")
-    parser.add_argument("--days", type=int, help="Look-back window in days (default 7).")
+    parser.add_argument(
+        "--days",
+        type=int,
+        help="Force the news window in days (default: inferred from the goal, 7 for weekly).",
+    )
     parser.add_argument("--max-revisions", type=int, help="Self-critique revision budget.")
     parser.add_argument("--name", help="Newsletter name.")
     parser.add_argument("--show", action="store_true", help="Print the final newsletter.")

@@ -71,7 +71,7 @@ def _make_tool(
         func=run,
         name=name,
         description=description,
-        args_schema=_search_args_schema(settings.lookback_days),
+        args_schema=_search_args_schema(settings.default_window_days),
         response_format="content_and_artifact",
     )
 
